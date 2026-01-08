@@ -1,19 +1,20 @@
 import React from "react";
 
-export default function NavBar({showCTA = true}) {
+export default function NavBar({variant = "home"}) {
     return (
         <nav className="navbar">
             <a href="/">
                 <p className="text-2xl font-bold text-gradient">FlashAI</p>
             </a>
-            {showCTA ?  (
+            {variant === "home" &&  (
             <a href="/auth" className="primary-button w-fit">
                 Get Started
             </a>
-            ) : (
-                <a href="/auth" className="primary-button w-fit">
+            )}
+            {variant === "app" && (
+                <button className="primary-button w-fit">
                     Log Out
-                </a>
+                </button>
             )}
         </nav>
     )

@@ -2,7 +2,7 @@ import NavBar from "../components/NavBar.jsx";
 
 export default function Home() {
     return <main className="min-h-screen pt-10 bg-[url('/images/bg-main.svg')] bg-cover">
-        <NavBar/>
+        <NavBar variant="home"/>
         <section className="main-section">
             <div className="page-heading">
                 <h1 className="text-3xl">Transform PDFs into Smart Flashcards</h1>
