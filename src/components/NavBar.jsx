@@ -1,4 +1,5 @@
 import React from "react";
+import {Link} from "react-router-dom";
 
 export default function NavBar({variant = "home"}) {
     return (
@@ -7,12 +8,12 @@ export default function NavBar({variant = "home"}) {
                 <p className="text-2xl font-bold text-gradient">FlashAI</p>
             </a>
             {variant === "home" &&  (
-            <a href="/auth" className="primary-button w-fit">
+            <button onClick={() => puter.auth.signIn()} className="primary-button w-fit">
                 Get Started
-            </a>
+            </button>
             )}
             {variant === "app" && (
-                <button className="primary-button w-fit">
+                <button onClick={() => puter.auth.signOut()} className="primary-button w-fit">
                     Log Out
                 </button>
             )}
