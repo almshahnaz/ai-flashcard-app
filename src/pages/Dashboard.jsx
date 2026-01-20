@@ -2,6 +2,7 @@ import NavBar from "../components/NavBar.jsx";
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import UploadBox from "../components/UploadBox.jsx";
+import {flashcardStorage} from "../utils/flashcardStorage.js";
 
 export default function Dashboard() {
 
@@ -10,12 +11,22 @@ export default function Dashboard() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [flashcards, setFlashcards] = useState(null);
+    const [savedSets, setSavedSets] = useState([]);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [setName, setSetName] = useState("");
 
     useEffect(() => {
         if (!puter.auth.isSignedIn()) {
             navigate("/");
+        } else {
+            loadSavedSets();
         }
     }, [navigate]);
+
+    const loadSavedSets = async () => {
+        const sets = await flashcardStorage.getAllSets();
+        setSavedSets(sets);
+    };
 
     const handleFile = (file) => {
         console.log(file);
@@ -109,6 +120,38 @@ Return ONLY valid JSON in this exact format with NO additional text:
         }
     };
 
+    const handleSaveFlashcards = async () => {
+        if (!flashcards || !setName.trim()) {
+            setError("Please enter a name for your flashcard set");
+            return;
+        }
+
+        try {
+            await flashcardStorage.saveSet(setName, flashcards, upload?.name);
+            setShowSaveModal(false);
+            setFlashcards(null);
+            setUpload(null);
+            setSetName("");
+            await loadSavedSets();
+            alert("Flashcards saved successfully!");
+        } catch (e) {
+            console.error("Error saving flashcards:", e);
+            setError("Failed to save flashcards");
+        }
+    };
+
+    const handleDeleteFlashcards = async (id) => {
+        if (confirm("Are you sure you want to delete this flashcard?")) {
+            await flashcardStorage.deleteSet(id);
+            await loadSavedSets();
+        }
+    };
+
+    const handleStudySet = async (set) => {
+        await flashcardStorage.updateLastStudied(set.id);
+        navigate(`/study/${set.id}`);
+    };
+
     return (
         <main className="min-h-screen pt-10 bg-[url('/images/bg-small.svg')] bg-cover">
             <NavBar variant="app"/>
@@ -147,17 +190,25 @@ Return ONLY valid JSON in this exact format with NO additional text:
                     <div className="w-full max-w-5xl mt-8 animate-fadeIn">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-2xl font-bold text-gray-800">
-                                Generated Flashcards ({flashcards.length})
+                                Flashcards ({flashcards.length})
                             </h3>
-                            <button
-                                onClick={() => {
-                                    setFlashcards(null);
-                                    setUpload(null);
-                                }}
-                                className="secondary-button"
-                            >
-                                Create New Set
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowSaveModal(true)}
+                                    className="primary-button"
+                                >
+                                    Save Flashcards
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setFlashcards(null);
+                                        setUpload(null);
+                                    }}
+                                    className="secondary-button"
+                                >
+                                    Create New Set
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flashcard-container">
@@ -170,14 +221,70 @@ Return ONLY valid JSON in this exact format with NO additional text:
                                 />
                             ))}
                         </div>
+                    </div>
+                )}
 
-                        <div className="flex gap-4 justify-center mt-8">
-                            <button className="primary-button">
-                                Start Studying
-                            </button>
-                            <button className="secondary-button">
-                                Export Flashcards
-                            </button>
+                {showSaveModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+                            <h3 className="text-2xl font-bold mb-4">Save Flashcard Set</h3>
+                            <div className="form-div">
+                                <label>Set Name</label>
+                                <input
+                                    type="text"
+                                    value={setName}
+                                    onChange={(e) => setSetName(e.target.value)}
+                                    placeholder="e.g., Biology Chapter 5"
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={handleSaveFlashcards}
+                                    className="primary-button flex-1"
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={() => setShowSaveModal(false)}
+                                    className="secondary-button flex-1"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {savedSets.length > 0 && !flashcards && (
+                    <div className="w-full max-w-5xl mt-16">
+                        <h3 className="text-2xl font-bold mb-6 text-gray-800">Your Saved Sets</h3>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {savedSets.map((set) => (
+                                <div key={set.id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
+                                    <h4 className="font-bold text-lg mb-2">{set.name}</h4>
+                                    <p className="text-sm text-gray-600 mb-1">
+                                        {set.flashcards.length} cards
+                                    </p>
+                                    <p className="text-xs text-gray-500 mb-4">
+                                        Created {new Date(set.created).toLocaleDateString()}
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleStudySet(set)}
+                                            className="primary-button text-sm flex-1"
+                                        >
+                                            Study
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteFlashcards(set.id)}
+                                            className="secondary-button text-sm"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -189,20 +296,25 @@ Return ONLY valid JSON in this exact format with NO additional text:
 function FlashcardPreview({ question, answer, difficulty }) {
     const [flipped, setFlipped] = useState(false);
 
-    const difficultyClasses = {
-        easy: 'badge-easy',
-        medium: 'badge-medium',
-        hard: 'badge-hard'
+    const difficultyConfig = {
+        easy: { class: 'badge-easy', label: 'Easy' },
+        medium: { class: 'badge-medium', label: 'Medium' },
+        hard: { class: 'badge-hard', label: 'Hard' }
     };
+
+    const config = difficultyConfig[difficulty] || difficultyConfig.medium;
 
     return (
         <div
-            className="flashcard cursor-pointer"
+            className="flashcard"
             onClick={() => setFlipped(!flipped)}
         >
-            <div className="flex justify-end mb-2">
-                <span className={difficultyClasses[difficulty] || 'badge-medium'}>
-                    {difficulty}
+            <div className="flex justify-between items-center mb-4">
+                <span className={`${config.class} flex items-center gap-1`}>
+                    <span>{config.label}</span>
+                </span>
+                <span className="text-gray-400 text-sm">
+                    {flipped ? 'Answer' : 'Question'}
                 </span>
             </div>
 
@@ -216,9 +328,11 @@ function FlashcardPreview({ question, answer, difficulty }) {
                 </div>
             )}
 
-            <p className="text-xs text-gray-400 text-center mt-4">
-                Click to flip
-            </p>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center font-medium">
+                    Click to {flipped ? 'see question' : 'reveal answer'} →
+                </p>
+            </div>
         </div>
     );
 }
